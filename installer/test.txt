@@ -1,0 +1,6 @@
+now i need to make rootless installers (windows and linux ps1/.sh scripts) that: need no dependancies other then like curl or wget
+download python 3 if not found into the ~/.local/share/anvil_server_hosting or equivelant
+gets the repo using this thing https://github.com/AnvilServerHosting/Anvil/archive/refs/heads/master.zip (for the time ill add a zip next to it so its not public, just look if there is Anvil.zip next to that)
+unzips (posix and windows both have those as coreutils ish)
+looks if your PC supports podman and if so downloads it somewhere in that app dir too
+and asks you if you want to install, if you agree to the license and that WE ARENT RESPONSIBLE, 

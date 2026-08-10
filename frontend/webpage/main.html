@@ -1,0 +1,1677 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Anvil Server Hosting</title>
+    
+    <!-- PWA HEADERS -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#080a0e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%233b82f6'/><text x='50%' y='68%' font-size='60' font-weight='bold' text-anchor='middle' fill='white'>⚡</text></svg>">
+
+    <style>
+        :root {
+            --bg-body: #080a0e;
+            --bg-sidebar-primary: #0b0e14;
+            --bg-sidebar-secondary: #0f131a;
+            --bg-card: #141a24;
+            --bg-card-hover: #1c2432;
+            --bg-input: #0a0d13;
+            --border-color: #202a3a;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --status-online: #10b981;
+            --status-offline: #ef4444;
+            --status-starting: #f59e0b;
+            --console-bg: #05070a;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 14px;
+        }
+
+        [data-theme="light"] {
+            --bg-body: #f8fafc;
+            --bg-sidebar-primary: #f1f5f9;
+            --bg-sidebar-secondary: #ffffff;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f1f5f9;
+            --bg-input: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent: #2563eb;
+            --console-bg: #0f172a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg-body); color: var(--text-primary); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar-primary { width: 220px; background: var(--bg-sidebar-primary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 1.25rem 0.75rem; flex-shrink: 0; }
+        .sidebar-secondary { width: 220px; background: var(--bg-sidebar-secondary); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 1.25rem 0.75rem; flex-shrink: 0; transition: width 0.2s ease, padding 0.2s ease; overflow: hidden; }
+        .sidebar-secondary.collapsed { width: 0; padding: 0; border: none; }
+
+        .brand-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; padding: 0 0.5rem; }
+        .brand-icon { width: 32px; height: 32px; background: var(--accent); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-weight: 800; color: #fff; }
+
+        .nav-list { list-style: none; display: flex; flex-direction: column; gap: 0.35rem; }
+        .nav-item { padding: 0.65rem 0.85rem; border-radius: var(--radius-md); color: var(--text-secondary); cursor: pointer; font-weight: 500; font-size: 0.85rem; text-decoration: none; display: flex; align-items: center; gap: 0.6rem; }
+        .nav-item:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+        .nav-item.active { background: rgba(59, 130, 246, 0.12); color: var(--accent); font-weight: 600; }
+
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-body); }
+        .top-navbar { height: 56px; background: var(--bg-sidebar-primary); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; flex-shrink: 0; }
+
+        .content-area { flex: 1; overflow-y: auto; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+        .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+        .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; }
+
+        .action-btn { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); padding: 0.65rem 1.1rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; text-decoration: none; }
+        .action-btn:hover { background: var(--accent-hover); }
+        .action-btn.secondary { background: var(--bg-card-hover); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .action-btn.danger { background: rgba(239, 68, 68, 0.15); color: var(--status-offline); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+        .status-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+        .status-badge.online { background: rgba(16, 185, 129, 0.12); color: var(--status-online); }
+        .status-badge.offline { background: rgba(239, 68, 68, 0.12); color: var(--status-offline); }
+        .status-badge.starting { background: rgba(245, 158, 11, 0.12); color: var(--status-starting); }
+
+        .console-box { background: var(--console-bg); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-family: monospace; padding: 1rem; height: 420px; overflow-y: auto; color: #cbd5e1; font-size: 0.85rem; }
+        .input-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+        label { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; }
+        input, select, textarea { width: 100%; padding: 0.65rem 0.85rem; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-primary); outline: none; font-size: 0.85rem; }
+
+        .drop-zone { border: 2px dashed var(--border-color); border-radius: var(--radius-md); padding: 1.5rem; text-align: center; color: var(--text-muted); cursor: pointer; margin-bottom: 1rem; }
+        .page-view { display: none; }
+        .page-view.active { display: block; }
+        footer { margin-top: auto; padding-top: 2rem; border-top: 1px solid var(--border-color); text-align: center; }
+        .disclaimer { font-size: 0.65rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    </style>
+</head>
+
+<body>
+
+    <!-- AUTH OVERLAY -->
+    <div id="auth-overlay" style="position:fixed; inset:0; background:rgba(4,6,9,0.96); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; z-index:9999;">
+        <div class="card" style="width:380px; text-align:center;">
+            <h2 style="margin-bottom:0.5rem;">Anvil Server Hosting</h2>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;" data-i18n="signin_prompt">Sign in to access your instances</p>
+            <div class="input-group">
+                <label data-i18n="username">Username</label>
+                <input type="text" id="auth-username" placeholder="admin">
+            </div>
+            <div class="input-group">
+                <label data-i18n="password">Password</label>
+                <input type="password" id="auth-password" placeholder="••••••••">
+            </div>
+            <div style="display: flex; gap: 0.75rem; margin-top: 1.25rem;">
+                <button type="button" class="action-btn" style="flex:1;" onclick="API.login()" data-i18n="login">Login</button>
+                <button type="button" class="action-btn secondary" id="btn-auth-register" style="flex:1;" onclick="API.register()" data-i18n="register">Register</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRIMARY SIDEBAR (LEFT) -->
+    <nav class="sidebar-primary">
+        <div class="brand-header">
+            <div class="brand-icon">⚡</div>
+            <div style="font-weight:700; font-size:0.95rem;">Anvil Hosting</div>
+        </div>
+        <ul class="nav-list">
+            <li><a class="nav-item active" id="nav-servers" href="/servers">🖥️ <span data-i18n="instances">Instances</span></a></li>
+            <li><a class="nav-item" id="nav-account" href="/account">👤 <span data-i18n="account">Account</span></a></li>
+            <li id="nav-admin-link" style="display:none;"><a class="nav-item" id="nav-admin" href="/admin">🛡️ <span data-i18n="admin_panel">Admin Panel</span></a></li>
+        </ul>
+
+        <div style="margin-top: auto;">
+            <p style="font-size:0.75rem; color: var(--text-muted);" id="user-display">Logged in</p>
+            <button type="button" class="action-btn secondary" style="width: 100%; margin-top:0.5rem; padding:0.4rem; font-size:0.8rem;" onclick="API.logout()" data-i18n="logout">Logout</button>
+        </div>
+    </nav>
+
+    <!-- SECONDARY SIDEBAR (WORKSPACE) -->
+    <nav class="sidebar-secondary collapsed" id="sidebar-secondary">
+        <div style="padding-bottom:1rem; border-bottom:1px solid var(--border-color); margin-bottom:1rem;">
+            <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;" data-i18n="active_context">Active Context</div>
+            <strong id="sec-server-name" style="font-size:0.9rem; color:var(--accent);">No Server</strong>
+        </div>
+        <ul class="nav-list">
+            <li><a class="nav-item" id="nav-dashboard" href="/server/dashboard">📊 <span data-i18n="dashboard">Dashboard</span></a></li>
+            <li><a class="nav-item" id="nav-console" href="/server/console">💻 <span data-i18n="console">Console</span></a></li>
+            <li><a class="nav-item" id="nav-files" href="/server/files">📁 <span data-i18n="files">File Manager</span></a></li>
+            <li><a class="nav-item" id="nav-config" href="/server/config">⚙️ <span data-i18n="settings">Settings</span></a></li>
+            <li><a class="nav-item" id="nav-addons" href="/server/addons">🧩 <span data-i18n="addons">Addons</span></a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <!-- TOP NAVBAR -->
+        <div class="top-navbar">
+            <div style="font-size:0.85rem; font-weight:600; color:var(--text-muted);" id="top-bar-title" data-i18n="overview">Overview</div>
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <select id="lang-select" onchange="i18n.setLanguage(this.value)" style="width:auto; padding:0.35rem 0.6rem; font-size:0.8rem;">
+                    <option value="en">English 🇺🇸</option>
+                    <option value="es">Español 🇪🇸</option>
+                    <option value="de">Deutsch 🇩🇪</option>
+                    <option value="fr">Français 🇫🇷</option>
+                </select>
+                <button type="button" class="action-btn secondary" style="padding:0.35rem 0.6rem; font-size:0.8rem;" onclick="toggleTheme()">🌓 <span data-i18n="theme">Theme</span></button>
+            </div>
+        </div>
+
+        <div class="content-area">
+
+            <!-- PAGE 1: SERVERS -->
+            <div id="page-servers" class="page-view active">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h1 data-i18n="instances">Your Instances</h1>
+                    <button type="button" class="action-btn secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick="API.loadServers()">🔄 <span data-i18n="refresh_list">Refresh List</span></button>
+                </div>
+                
+                <div class="card" style="max-width: 550px; margin-top: 1.5rem;">
+                    <h2 data-i18n="create_instance">Create Instance</h2>
+                    <div class="input-group" style="margin-top:1rem;">
+                        <label data-i18n="display_name">Display Name</label>
+                        <input type="text" id="create-name" data-i18n-placeholder="display_name_placeholder" placeholder="My Survival Server">
+                    </div>
+                    <div class="input-group">
+                        <label data-i18n="software_loader">Software Loader</label>
+                        <select id="create-loader">
+                            <optgroup label="Paper Spinoffs & Proxies">
+                                <option value="paper" selected>paper (Spigot/Paper - Recommended)</option>
+                                <option value="folia">folia (Multi-threaded regionized)</option>
+                                <option value="travertine">travertine (Waterfall proxy fork)</option>
+                                <option value="velocity">velocity (High-performance proxy)</option>
+                                <option value="waterfall">waterfall (BungeeCord proxy fork)</option>
+                            </optgroup>
+                            <optgroup label="Modded Loaders">
+                                <option value="fabric">fabric (Lightweight mod loader)</option>
+                                <option value="neoforge">neoforge (Modern Forge fork)</option>
+                                <option value="quilt">quilt (Fabric-compatible loader)</option>
+                            </optgroup>
+                            <optgroup label="Vanilla">
+                                <option value="vanilla">vanilla (Official unmodded Mojang server)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label data-i18n="mc_version">Minecraft Version (Official Mojang Manifest)</label>
+                        <select id="create-version">
+                            <option value="1.20.4" selected>Fetching official Mojang releases...</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="create-eula" style="width: auto; cursor: pointer;">
+                        <label for="create-eula" style="cursor: pointer; margin-bottom: 0;" data-i18n="agree_eula">I agree to Minecraft EULA</label>
+                    </div>
+                    <button type="button" class="action-btn" style="width:100%; margin-top:1rem;" onclick="API.createServer()" data-i18n="create_btn">Create Instance</button>
+                </div>
+                <div id="server-list-container" class="grid-cards" style="margin-top:1.5rem;"></div>
+            </div>
+
+            <!-- PAGE 2: DASHBOARD -->
+            <div id="page-dashboard" class="page-view">
+                <h1 id="active-server-name">No Instance</h1>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem; margin-bottom: 1.5rem;">
+                    <button type="button" class="action-btn" onclick="API.startServer()" data-i18n="start">▶ Start Server</button>
+                    <button type="button" class="action-btn danger" onclick="API.stopServer()" data-i18n="stop">⏹ Stop Server</button>
+                </div>
+                <div class="grid-2">
+                    <div class="card">
+                        <h2 data-i18n="resource_usage">Resource Usage</h2>
+                        <div style="display:flex; justify-content:space-between; margin-top:1rem;"><span data-i18n="memory">Memory:</span><strong id="metric-ram">0 MB</strong></div>
+                        <div style="display:flex; justify-content:space-between; margin-top:0.5rem;"><span data-i18n="cpu">CPU Load:</span><strong id="metric-cpu">0%</strong></div>
+                    </div>
+                    <div class="card">
+                        <h2 data-i18n="instance_info">Instance Info</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0.5rem;">Loader: <strong style="color: var(--text-primary)" id="info-loader">-</strong></p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0.5rem;">Version: <strong style="color: var(--text-primary)" id="info-version">-</strong></p>
+                    </div>
+                </div>
+
+                <!-- DANGER ZONE -->
+                <div class="card" style="margin-top:1.5rem; border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.03);">
+                    <h2 style="color:var(--status-offline); font-size:1.1rem; margin-bottom:0.5rem;" data-i18n="danger_zone">⚠️ Danger Zone</h2>
+                    <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;" data-i18n="danger_zone_desc">
+                        Permanently delete this server instance, its worlds, mods, and configuration files. This action cannot be undone.
+                    </p>
+                    <button type="button" class="action-btn danger" onclick="API.deleteCurrentServer()" data-i18n="delete_instance_btn">🗑️ Delete This Instance</button>
+                </div>
+            </div>
+
+            <!-- PAGE 3: CONSOLE -->
+            <div id="page-console" class="page-view">
+                <h1 data-i18n="console">Console Terminal</h1>
+                <div class="card" style="margin-top:1rem;">
+                    <div id="console-logs" class="console-box"></div>
+                    <input type="text" id="console-input" data-i18n-placeholder="cmd_placeholder" placeholder="Type command..." style="margin-top:1rem;" onkeydown="if(event.key==='Enter') API.sendCommand()" />
+                </div>
+            </div>
+
+            <!-- PAGE 4: FILE MANAGER -->
+            <div id="page-files" class="page-view">
+                <h1 data-i18n="files">File Manager</h1>
+                <p style="font-size:0.85rem; color:var(--text-muted);" id="current-file-path">Path: /</p>
+
+                <div class="card" style="margin-top:1rem;">
+                    <div class="drop-zone" id="file-drop-zone" onclick="document.getElementById('file-upload-input').click()" data-i18n="drop_zone">
+                        📥 Drag & Drop files here or click to upload
+                        <input type="file" id="file-upload-input" style="display:none;" onchange="API.uploadFiles(this.files)">
+                    </div>
+                    <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                        <button type="button" class="action-btn secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick="API.createFolderPrompt()" data-i18n="new_folder">📁 New Folder</button>
+                    </div>
+                    <div class="grid-2">
+                        <div id="file-tree-container"></div>
+                        <div>
+                            <textarea id="file-content-editor" rows="16" data-i18n-placeholder="file_edit_placeholder" placeholder="Select a text file to edit..."></textarea>
+                            <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                                <button type="button" class="action-btn" style="flex:1;" onclick="API.saveFile()" data-i18n="save">Save File</button>
+                                <button type="button" class="action-btn secondary" style="flex:1;" onclick="API.downloadCurrentFile()" data-i18n="download">⬇️ Download</button>
+                                <button type="button" class="action-btn danger" style="flex:1;" onclick="API.deleteFile()" data-i18n="delete">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 5: CONFIG -->
+            <div id="page-config" class="page-view">
+                <h1 data-i18n="settings">Server Properties</h1>
+                <div class="card" style="max-width: 600px; margin-top:1.5rem;">
+                    <div class="input-group">
+                        <label>
+                            <span data-i18n="online_mode">Online Mode</span>
+                            <span id="online-mode-lock-msg" style="display:none; color:var(--status-starting); font-size:0.75rem; margin-left:0.5rem;" data-i18n="online_locked_notice">🔒 Locked to 'true' by Administrator</span>
+                        </label>
+                        <select id="cfg-online-mode">
+                            <option value="true" selected>true (Licensed Accounts Only)</option>
+                            <option value="false">false (Offline / Cracked Accounts Allowed)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label><span data-i18n="view_distance">View Distance (Chunks)</span> <span id="vd-max-label" style="color:var(--text-muted); font-size:0.75rem;"></span></label>
+                        <input type="number" id="cfg-view-distance" value="10" min="3" max="32">
+                    </div>
+                    <div class="input-group">
+                        <label><span data-i18n="sim_distance">Simulation Distance (Chunks)</span> <span id="sd-max-label" style="color:var(--text-muted); font-size:0.75rem;"></span></label>
+                        <input type="number" id="cfg-simulation-distance" value="8" min="3" max="32">
+                    </div>
+                    <button type="button" class="action-btn" style="width:100%; margin-top:1rem;" onclick="API.saveConfig()" data-i18n="save_settings">Save Settings</button>
+                </div>
+            </div>
+
+            <!-- PAGE 6: ADDONS & PRESETS MARKETPLACE -->
+            <div id="page-addons" class="page-view">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h1 data-i18n="addons">Addons & Mod Presets</h1>
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.3rem;" data-i18n="addons_subtitle">
+                            Install tested server addons or bundle custom presets with 1-click.
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button type="button" class="action-btn" id="btn-toggle-builder" onclick="API.togglePresetBuilder()" data-i18n="start_builder">🛠️ Start Preset Builder</button>
+                        <button type="button" class="action-btn secondary" onclick="API.checkForUpdates()" data-i18n="check_updates">🔄 Check Updates</button>
+                    </div>
+                </div>
+
+                <!-- PRESET BUILDER ACTIVE TOOLBAR -->
+                <div id="builder-toolbar" style="display:none; margin-top:1rem; padding:1rem 1.25rem; background:rgba(59,130,246,0.12); border:1px solid var(--accent); border-radius:var(--radius-md); justify-content:space-between; align-items:center;">
+                    <div>
+                        <strong style="color:var(--accent);">🛠️ Preset Builder Mode Active:</strong>
+                        <span id="builder-preset-title" style="margin-left:0.5rem; font-weight:600;">"Custom Preset"</span>
+                        <span id="builder-count" style="margin-left:0.5rem; color:var(--text-muted); font-size:0.85rem;">(0 mods selected)</span>
+                    </div>
+                    <div style="display:flex; gap:0.5rem;">
+                        <button type="button" class="action-btn" style="padding:0.4rem 0.9rem; font-size:0.8rem;" onclick="API.savePresetFromBuilder()" data-i18n="save_preset">💾 Save Preset</button>
+                        <button type="button" class="action-btn secondary" style="padding:0.4rem 0.8rem; font-size:0.8rem;" onclick="API.cancelPresetBuilder()" data-i18n="cancel">Cancel</button>
+                    </div>
+                </div>
+
+                <!-- 1-CLICK PRESETS SECTION -->
+                <div style="margin-top:1.5rem;">
+                    <h2 style="font-size:1.05rem; margin-bottom:0.75rem;" data-i18n="preset_section">⚡ 1-Click Installation Presets</h2>
+                    <div id="presets-container" class="grid-cards"></div>
+                </div>
+
+                <!-- SEARCH ADDONS SECTION -->
+                <div class="card" style="margin-top:2rem;">
+                    <h2 style="font-size:1.05rem; margin-bottom:0.75rem;" data-i18n="search_addons_section">🔍 Search Server Addons</h2>
+                    <div style="display:flex; gap:0.75rem;">
+                        <input type="text" id="addon-search-input" data-i18n-placeholder="search_addons_placeholder" placeholder="Search server mods or plugins (e.g. Lithium, Chunky, Geyser)..." onkeydown="if(event.key==='Enter') API.searchAddons()">
+                        <button type="button" class="action-btn" onclick="API.searchAddons()" data-i18n="search">Search</button>
+                    </div>
+                </div>
+
+                <div id="addon-updates-banner" style="display:none; margin-top:1rem; padding:1rem; background:rgba(245,158,11,0.12); border-radius:var(--radius-md);"></div>
+                <div id="addon-results-container" class="grid-cards" style="margin-top:1.5rem;"></div>
+            </div>
+
+            <!-- CREATE PRESET MODAL OVERLAY -->
+            <div id="preset-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); z-index:99999; align-items:center; justify-content:center;">
+                <div class="card" style="width:480px; max-width:90%;">
+                    <h2>Create Custom Preset</h2>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">Bundle your favorite mods/plugins together for 1-click installation.</p>
+                    
+                    <div class="input-group">
+                        <label>Preset Name</label>
+                        <input type="text" id="preset-name" placeholder="e.g. My Survival Enhancements">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Description</label>
+                        <input type="text" id="preset-desc" placeholder="Brief description of this modpack/plugin bundle">
+                    </div>
+
+                    <div class="input-group">
+                        <label>Target Loader</label>
+                        <select id="preset-loader">
+                            <option value="all">All Software Loaders</option>
+                            <option value="fabric">Fabric / Quilt</option>
+                            <option value="paper">Paper / Spigot / Folia</option>
+                            <option value="neoforge">NeoForge / Forge</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Modrinth Slugs / Project IDs (Comma Separated)</label>
+                        <textarea id="preset-slugs" rows="3" placeholder="e.g. lithium, ferrite-core, chunky, modernfix"></textarea>
+                    </div>
+
+                    <div style="display:flex; gap:0.75rem; margin-top:1.25rem;">
+                        <button type="button" class="action-btn" style="flex:1;" onclick="API.saveCustomPreset()">Save Preset</button>
+                        <button type="button" class="action-btn secondary" style="flex:1;" onclick="document.getElementById('preset-modal').style.display='none'">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 7: ACCOUNT SETTINGS & QUOTA AUDIT -->
+            <div id="page-account" class="page-view">
+                <h1 data-i18n="account">Account & Resource Allocation</h1>
+
+                <div class="grid-2" style="margin-top:1.5rem;">
+                    <!-- QUOTA METERS -->
+                    <div class="card">
+                        <h2 style="font-size:1.1rem; margin-bottom:1rem;" data-i18n="resource_quotas">📊 Resource Quotas</h2>
+                        
+                        <div style="margin-bottom:1.25rem;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.4rem;">
+                                <span data-i18n="instance_quota">Instance Quota:</span>
+                                <strong id="quota-instances-text">0 / 0</strong>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem; margin-bottom:0.4rem;">
+                                <span data-i18n="disk_usage">Disk Storage Usage:</span>
+                                <strong id="quota-disk-text">0 MB / 0 MB</strong>
+                            </div>
+                            <div style="width:100%; height:8px; background:var(--bg-input); border-radius:4px; overflow:hidden; border:1px solid var(--border-color);">
+                                <div id="quota-disk-bar" style="height:100%; width:0%; background:var(--accent); transition:width 0.3s ease;"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border-color); font-size:0.8rem; color:var(--text-muted);">
+                            <span data-i18n="group_tier">Group Tier:</span> <strong style="color:var(--text-primary);" id="quota-group-name">-</strong>
+                        </div>
+                    </div>
+
+                    <!-- CHANGE PASSWORD -->
+                    <div class="card">
+                        <h2 data-i18n="change_password" style="font-size:1.1rem;">Change Password</h2>
+                        <div class="input-group" style="margin-top:1rem;">
+                            <label data-i18n="new_password">New Password</label>
+                            <input type="password" id="acc-new-pwd" data-i18n-placeholder="min_6_chars" placeholder="At least 6 characters">
+                        </div>
+                        <button type="button" class="action-btn" onclick="API.changePassword()" data-i18n="update_password">Update Password</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 8: ADMIN CONTROL PANEL -->
+            <div id="page-admin" class="page-view">
+                <h1 data-i18n="admin_panel">Admin Control Panel</h1>
+
+                <!-- 1. SECURITY & ACCESS CONTROL CARD -->
+                <div class="card" style="margin-top:1.5rem; border-left: 4px solid var(--status-starting);">
+                    <h2 data-i18n="sec_access_title">🛡️ Security & Access Control</h2>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;" data-i18n="sec_access_desc">Enforce system-wide security, registration rules, and authentication defaults.</p>
+                    
+                    <div class="input-group" style="flex-direction:row; align-items:center; gap:0.5rem; margin-top:1.25rem;">
+                        <input type="checkbox" id="admin-allow-reg" style="width:auto; cursor:pointer;" checked>
+                        <label for="admin-allow-reg" style="cursor:pointer; margin-bottom:0; font-weight:600;" data-i18n="allow_reg_label">Allow Public Account Registration (Uncheck to lock down new user signups)</label>
+                    </div>
+
+                    <div class="input-group" style="flex-direction:row; align-items:center; gap:0.5rem; margin-top:0.75rem;">
+                        <input type="checkbox" id="admin-lock-online" style="width:auto; cursor:pointer;">
+                        <label for="admin-lock-online" style="cursor:pointer; margin-bottom:0; font-weight:600;" data-i18n="force_online_label">Force-Lock Online Mode (Prevents servers from disabling Mojang authentication)</label>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;">
+                        <div class="input-group">
+                            <label data-i18n="admin_max_vd">Max Allowed View Distance (Chunks)</label>
+                            <input type="number" id="admin-max-view-dist" value="16" min="3" max="32">
+                        </div>
+                        <div class="input-group">
+                            <label data-i18n="admin_max_sd">Max Allowed Simulation Distance (Chunks)</label>
+                            <input type="number" id="admin-max-sim-dist" value="12" min="3" max="32">
+                        </div>
+                    </div>
+
+                    <button type="button" class="action-btn" style="margin-top:0.5rem; width:100%;" onclick="API.saveAdminSettings()" data-i18n="save_sec_btn">Save Security & Distance Settings</button>
+                </div>
+
+                <!-- 2. ANVIL HUB MULTIPLEXER ROUTER (PORT 25565) -->
+                <div class="card" style="margin-top:1.5rem; border-left: 4px solid var(--accent);">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h2>⚡ Anvil Hub & Proxy Multiplexer (Port 25565)</h2>
+                        <span id="hub-badge" class="status-badge offline">Offline</span>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem;" data-i18n="hub_desc">
+                        Allows multiple Minecraft servers to share a single public IP/Port (Playit or 25565) and routes players automatically.
+                    </p>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem; margin-top:1rem;">
+                        <div class="input-group">
+                            <label data-i18n="hub_mode_label">Routing Strategy</label>
+                            <select id="hub-mode-select" onchange="API.toggleHubDomainInput()">
+                                <option value="chat_code" selected>💬 In-Game Chat Code Guide (Single IP / Free Playit)</option>
+                                <option value="vhost">🌐 Subdomain / Custom Domain Router ([server-id].domain.com)</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group" id="hub-domain-group" style="display:none;">
+                            <label data-i18n="hub_custom_domain_label">Custom Root Domain</label>
+                            <input type="text" id="hub-custom-domain" placeholder="e.g. mc.yourdomain.com">
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:0.75rem; margin-top:0.75rem;">
+                        <button type="button" class="action-btn" id="btn-start-hub" onclick="API.startHub()" data-i18n="start_hub_btn">🚀 Start Hub Multiplexer</button>
+                        <button type="button" class="action-btn danger" id="btn-stop-hub" style="display:none;" onclick="API.stopHub()" data-i18n="stop_hub_btn">⏹ Stop Hub</button>
+                        <button type="button" class="action-btn secondary" onclick="API.saveHubSettings()" data-i18n="save_hub_btn">💾 Save Router Settings</button>
+                    </div>
+                </div>
+
+                <!-- 3. USER QUOTAS -->
+                <div class="card" style="margin-top:1.5rem;">
+                    <h2 data-i18n="quota_mgmt_title">⚙️ User Quota & Group Management</h2>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;" data-i18n="quota_mgmt_desc">Configure resource ceilings for user tiers.</p>
+                    
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem;">
+                        <div class="input-group">
+                            <label data-i18n="max_instances_label">Max Instances Per User</label>
+                            <input type="number" id="admin-quota-instances" value="3" min="1" max="50">
+                        </div>
+                        <div class="input-group">
+                            <label data-i18n="max_ram_label">Max RAM Per Instance (MB)</label>
+                            <input type="number" id="admin-quota-ram" value="4096" min="512" step="512">
+                        </div>
+                        <div class="input-group">
+                            <label data-i18n="max_disk_label">Max Storage Limit (MB)</label>
+                            <input type="number" id="admin-quota-disk" value="10000" min="1000" step="1000">
+                        </div>
+                        <div class="input-group">
+                            <label data-i18n="max_cpu_label">Max CPU Limit (%)</label>
+                            <input type="number" id="admin-quota-cpu" value="100" min="10" max="800">
+                        </div>
+                    </div>
+                    <button type="button" class="action-btn" style="margin-top:0.5rem;" onclick="API.adminSaveGroupQuota()" data-i18n="save_quota_btn">Save Quota Limits</button>
+                </div>
+
+                <!-- 4. GLOBAL PRESETS -->
+                <div class="card" style="margin-top:1.5rem;">
+                    <h2 data-i18n="global_presets_title">🛡️ Global Mod Presets (Visible to Everyone)</h2>
+                    <div style="display:flex; gap:0.5rem; margin-top:1rem; flex-wrap:wrap;">
+                        <input type="text" id="admin-preset-name" data-i18n-placeholder="admin_preset_name_ph" placeholder="Preset Name (e.g. Vanilla+ Quality of Life)" style="flex:1; min-width:200px;">
+                        <input type="text" id="admin-preset-slugs" data-i18n-placeholder="admin_preset_slugs_ph" placeholder="Mod Slugs (e.g. chunky, lithium, spark)" style="flex:2; min-width:260px;">
+                        <select id="admin-preset-loader" style="width:140px;">
+                            <option value="all">All Loaders</option>
+                            <option value="fabric">Fabric</option>
+                            <option value="paper">Paper</option>
+                            <option value="neoforge">NeoForge</option>
+                        </select>
+                        <button type="button" class="action-btn" onclick="API.adminCreateGlobalPreset()" data-i18n="create_global_preset_btn">Create Global Preset</button>
+                    </div>
+                    <div id="admin-presets-list" style="margin-top:1rem;"></div>
+                </div>
+
+                <!-- 5. REGISTERED USERS -->
+                <div class="card" style="margin-top:1.5rem;">
+                    <h2>👥 <span data-i18n="reg_users_title">Registered Users</span></h2>
+                    <div id="admin-user-list" style="margin-top:1rem;"></div>
+                </div>
+
+                <!-- 6. ALL PLATFORM SERVERS -->
+                <div class="card" style="margin-top:1.5rem;">
+                    <h2>🖥️ <span data-i18n="all_instances_title">All Platform Instances</span></h2>
+                    <div id="admin-server-list" style="margin-top:1rem;"></div>
+                </div>
+            </div>
+
+            <footer>
+                <a href="https://github.com/NotVibeCodedSlop/anvil_server_hosting" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                style="font-size: 0.8rem; font-weight: 700; text-decoration: none; color: inherit; cursor: pointer;">
+                Anvil Server Hosting v1.0.0
+                </a>
+                <div class="disclaimer" data-i18n="mojang_disclaimer">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</div>
+            </footer>
+        </div>
+    </main>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
+
+        // COOKIE HELPERS
+        function getCookie(name) {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+        }
+
+        function setCookie(name, value, days = 365) {
+            const d = new Date();
+            d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+            document.cookie = `${name}=${value}; expires=${d.toUTCString()}; path=/; SameSite=Lax`;
+        }
+
+        // GLOBAL APPLICATION STATE
+        const state = {
+            user: null,
+            activeServerId: null,
+            servers: [],
+            activeFilePath: '',
+            lang: getCookie('anvil_lang') || 'en',
+            builder: { active: false, name: '', loader: 'all', mods: [] }
+        };
+
+        // COMPLETE MULTILINGUAL LOCALIZATION DICTIONARIES
+        const translations = {
+            en: {
+                signin_prompt: "Sign in to access your instances", username: "Username", password: "Password", login: "Login", register: "Register",
+                instances: "Instances", account: "Account", admin_panel: "Admin Panel", active_context: "Active Context", dashboard: "Dashboard",
+                console: "Console", files: "File Manager", settings: "Settings", addons: "Addons", logout: "Logout", overview: "Overview", theme: "Theme",
+                refresh_list: "Refresh List", create_instance: "Create Instance", display_name: "Display Name", display_name_placeholder: "My Survival Server",
+                software_loader: "Software Loader", mc_version: "Minecraft Version (Official Mojang Manifest)", agree_eula: "I agree to Minecraft EULA",
+                create_btn: "Create Instance", resource_usage: "Resource Usage", memory: "Memory:", cpu: "CPU Load:", instance_info: "Instance Info",
+                start: "▶ Start Server", stop: "⏹ Stop Server", danger_zone: "⚠️ Danger Zone", danger_zone_desc: "Permanently delete this server instance, its worlds, mods, and configuration files. This action cannot be undone.",
+                delete_instance_btn: "🗑️ Delete This Instance", cmd_placeholder: "Type command and press Enter...", drop_zone: "📥 Drag & Drop files here or click to upload",
+                new_folder: "📁 New Folder", file_edit_placeholder: "Select a text file to edit...", save: "Save File", download: "⬇️ Download", delete: "Delete",
+                online_mode: "Online Mode", online_locked_notice: "🔒 Locked to 'true' by Administrator", view_distance: "View Distance (Chunks)", sim_distance: "Simulation Distance (Chunks)",
+                save_settings: "Save Settings", addons_subtitle: "Install tested server addons or bundle custom presets with 1-click.", start_builder: "🛠️ Start Preset Builder",
+                check_updates: "🔄 Check Updates", save_preset: "💾 Save Preset", cancel: "Cancel", preset_section: "⚡ 1-Click Installation Presets", search_addons_section: "🔍 Search Server Addons",
+                search_addons_placeholder: "Search server mods or plugins (e.g. Lithium, Chunky, Geyser)...", search: "Search", resource_quotas: "📊 Resource Quotas",
+                instance_quota: "Instance Quota:", disk_usage: "Disk Storage Usage:", group_tier: "Group Tier:", change_password: "Change Password", new_password: "New Password",
+                min_6_chars: "At least 6 characters", update_password: "Update Password", sec_access_title: "🛡️ Security & Access Control",
+                sec_access_desc: "Enforce system-wide security, registration rules, and authentication defaults.", allow_reg_label: "Allow Public Account Registration (Uncheck to lock down new user signups)",
+                force_online_label: "Force-Lock Online Mode (Prevents servers from disabling Mojang authentication)", admin_max_vd: "Max Allowed View Distance (Chunks)",
+                admin_max_sd: "Max Allowed Simulation Distance (Chunks)", save_sec_btn: "Save Security & Distance Settings", quota_mgmt_title: "⚙️ User Quota & Group Management",
+                quota_mgmt_desc: "Configure resource ceilings for user tiers.", max_instances_label: "Max Instances Per User", max_ram_label: "Max RAM Per Instance (MB)",
+                max_disk_label: "Max Storage Limit (MB)", max_cpu_label: "Max CPU Limit (%)", save_quota_btn: "Save Quota Limits",
+                hub_desc: "Allows multiple Minecraft servers to share a single public IP/Port (Playit or 25565) and routes players automatically.",
+                hub_mode_label: "Routing Strategy", hub_custom_domain_label: "Custom Root Domain", start_hub_btn: "🚀 Start Hub Multiplexer", stop_hub_btn: "⏹ Stop Hub", save_hub_btn: "💾 Save Router Settings",
+                global_presets_title: "🛡️ Global Mod Presets (Visible to Everyone)", admin_preset_name_ph: "Preset Name (e.g. Vanilla+ Quality of Life)",
+                admin_preset_slugs_ph: "Mod Slugs (e.g. chunky, lithium, spark)", create_global_preset_btn: "Create Global Preset", reg_users_title: "Registered Users",
+                all_instances_title: "All Platform Instances", mojang_disclaimer: "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT."
+            },
+            es: {
+                signin_prompt: "Inicie sesión para acceder a sus instancias", username: "Usuario", password: "Contraseña", login: "Iniciar Sesión", register: "Registrarse",
+                instances: "Instancias", account: "Cuenta", admin_panel: "Panel Admin", active_context: "Contexto Activo", dashboard: "Panel",
+                console: "Consola", files: "Archivos", settings: "Ajustes", addons: "Complementos", logout: "Cerrar Sesión", overview: "Visión General", theme: "Tema",
+                refresh_list: "Actualizar Lista", create_instance: "Crear Instancia", display_name: "Nombre visible", display_name_placeholder: "Mi Servidor Survival",
+                software_loader: "Software Loader", mc_version: "Versión de Minecraft (Manifiesto Mojang)", agree_eula: "Acepto el EULA de Minecraft",
+                create_btn: "Crear Instancia", resource_usage: "Uso de Recursos", memory: "Memoria:", cpu: "Carga de CPU:", instance_info: "Información",
+                start: "▶ Iniciar Servidor", stop: "⏹ Detener Servidor", danger_zone: "⚠️ Zona de Peligro", danger_zone_desc: "Elimine permanentemente esta instancia, sus mundos y archivos.",
+                delete_instance_btn: "🗑️ Eliminar esta instancia", cmd_placeholder: "Escriba un comando y presione Enter...", drop_zone: "📥 Arrastre archivos aquí para subir",
+                new_folder: "📁 Nueva Carpeta", file_edit_placeholder: "Seleccione un archivo para editar...", save: "Guardar", download: "⬇️ Descargar", delete: "Eliminar",
+                online_mode: "Modo Online", online_locked_notice: "🔒 Bloqueado en 'true' por el Administrador", view_distance: "Distancia de Visión (Chunks)", sim_distance: "Distancia de Simulación (Chunks)",
+                save_settings: "Guardar Ajustes", addons_subtitle: "Instale mods o cree paquetes con 1 clic.", start_builder: "🛠️ Crear Paquete de Mods",
+                check_updates: "🔄 Buscar Actualizaciones", save_preset: "💾 Guardar Paquete", cancel: "Cancelar", preset_section: "⚡ Paquetes de Instalación Rápida", search_addons_section: "🔍 Buscar Mods del Servidor",
+                search_addons_placeholder: "Buscar mods o plugins (ej. Lithium, Chunky, Geyser)...", search: "Buscar", resource_quotas: "📊 Cuotas de Recursos",
+                instance_quota: "Cuota de Instancias:", disk_usage: "Uso de Almacenamiento:", group_tier: "Nivel de Grupo:", change_password: "Cambiar Contraseña", new_password: "Nueva Contraseña",
+                min_6_chars: "Al menos 6 caracteres", update_password: "Actualizar Contraseña", sec_access_title: "🛡️ Seguridad y Control de Acceso",
+                sec_access_desc: "Gestione el registro de cuentas y la autenticación del sistema.", allow_reg_label: "Permitir Registro Público (Desmarque para bloquear nuevos usuarios)",
+                force_online_label: "Forzar Modo Online (Evita desactivar autenticación de Mojang)", admin_max_vd: "Distancia de Visión Máxima (Chunks)",
+                admin_max_sd: "Distancia de Simulación Máxima (Chunks)", save_sec_btn: "Guardar Ajustes de Seguridad", quota_mgmt_title: "⚙️ Gestión de Cuotas y Grupos",
+                quota_mgmt_desc: "Configure los límites de recursos para los usuarios.", max_instances_label: "Máx Instancias por Usuario", max_ram_label: "Máx RAM por Instancia (MB)",
+                max_disk_label: "Límite de Disco (MB)", max_cpu_label: "Límite de CPU (%)", save_quota_btn: "Guardar Límites de Cuota",
+                hub_desc: "Permite que múltiples servidores de Minecraft compartan una sola IP/Puerto y enruta a los jugadores automáticamente.",
+                hub_mode_label: "Estrategia de Enrutamiento", hub_custom_domain_label: "Dominio Raíz Personalizado", start_hub_btn: "🚀 Iniciar Multiplexor Hub", stop_hub_btn: "⏹ Detener Hub", save_hub_btn: "💾 Guardar Ajustes de Enrutador",
+                global_presets_title: "🛡️ Paquetes Globales (Visibles para todos)", admin_preset_name_ph: "Nombre del Paquete",
+                admin_preset_slugs_ph: "Identificadores de mods (ej. chunky, lithium, spark)", create_global_preset_btn: "Crear Paquete Global", reg_users_title: "Usuarios Registrados",
+                all_instances_title: "Todas las Instancias", mojang_disclaimer: "NO ES UN PRODUCTO OFICIAL DE MINECRAFT. NO APROBADO POR MOJANG NI MICROSOFT."
+            },
+            de: {
+                signin_prompt: "Melden Sie sich an, um auf Ihre Instanzen zuzugreifen", username: "Benutzername", password: "Passwort", login: "Anmelden", register: "Registrieren",
+                instances: "Instanzen", account: "Konto", admin_panel: "Admin-Panel", active_context: "Aktiver Kontext", dashboard: "Übersicht",
+                console: "Konsole", files: "Dateien", settings: "Einstellungen", addons: "Erweiterungen", logout: "Abmelden", overview: "Übersicht", theme: "Design",
+                refresh_list: "Liste Aktualisieren", create_instance: "Instanz Erstellen", display_name: "Anzeigename", display_name_placeholder: "Mein Survival Server",
+                software_loader: "Software Loader", mc_version: "Minecraft-Version", agree_eula: "Ich stimme der Minecraft EULA zu",
+                create_btn: "Instanz Erstellen", resource_usage: "Ressourcenverbrauch", memory: "Speicher:", cpu: "CPU-Auslastung:", instance_info: "Instanzinfo",
+                start: "▶ Server Starten", stop: "⏹ Server Stoppen", danger_zone: "⚠️ Gefahrenbereich", danger_zone_desc: "Löschen Sie diese Serverinstanz und alle Dateien unwiderruflich.",
+                delete_instance_btn: "🗑️ Diese Instanz Löschen", cmd_placeholder: "Befehl eingeben...", drop_zone: "📥 Dateien hierher ziehen zum Hochladen",
+                new_folder: "📁 Neuer Ordner", file_edit_placeholder: "Textdatei zum Bearbeiten auswählen...", save: "Speichern", download: "⬇️ Herunterladen", delete: "Löschen",
+                online_mode: "Online-Modus", online_locked_notice: "🔒 Durch Administrator gesperrt", view_distance: "Sichtweite (Chunks)", sim_distance: "Simulationsweite (Chunks)",
+                save_settings: "Einstellungen Speichern", addons_subtitle: "Erweiterungen und Mod-Pakete mit einem Klick installieren.", start_builder: "🛠️ Paket-Ersteller Starten",
+                check_updates: "🔄 Updates Suchen", save_preset: "💾 Paket Speichern", cancel: "Abbrechen", preset_section: "⚡ 1-Klick Installationspakete", search_addons_section: "🔍 Server-Mods Suchen",
+                search_addons_placeholder: "Mods oder Plugins suchen...", search: "Suchen", resource_quotas: "📊 Ressourcen-Kontingente",
+                instance_quota: "Instanz-Kontingent:", disk_usage: "Festplattennutzung:", group_tier: "Gruppenstufe:", change_password: "Passwort Ändern", new_password: "Neues Passwort",
+                min_6_chars: "Mindestens 6 Zeichen", update_password: "Passwort Aktualisieren", sec_access_title: "🛡️ Sicherheit & Zugriffskontrolle",
+                sec_access_desc: "Verwalten Sie Registrierungsregeln und Authentifizierungsstandards.", allow_reg_label: "Öffentliche Registrierung Erlauben (Deaktivieren zum Sperren)",
+                force_online_label: "Online-Modus Erzwingen (Verhindert das Deaktivieren der Mojang-Authentifizierung)", admin_max_vd: "Maximal Erlaubte Sichtweite (Chunks)",
+                admin_max_sd: "Maximal Erlaubte Simulationsweite (Chunks)", save_sec_btn: "Sicherheitseinstellungen Speichern", quota_mgmt_title: "⚙️ Benutzer-Kontingente & Gruppen",
+                quota_mgmt_desc: "Ressourcengrenzen für Benutzer festlegen.", max_instances_label: "Max. Instanzen pro Benutzer", max_ram_label: "Max. RAM pro Instanz (MB)",
+                max_disk_label: "Speicherlimit (MB)", max_cpu_label: "CPU-Limit (%)", save_quota_btn: "Kontingente Speichern",
+                hub_desc: "Ermöglicht es mehreren Minecraft-Servern, eine einzige öffentliche IP/Port zu teilen und leitet Spieler automatisch weiter.",
+                hub_mode_label: "Routing-Strategie", hub_custom_domain_label: "Benutzerdefinierte Root-Domain", start_hub_btn: "🚀 Hub-Multiplexer Starten", stop_hub_btn: "⏹ Hub Stoppen", save_hub_btn: "💾 Router-Einstellungen Speichern",
+                global_presets_title: "🛡️ Globale Mod-Pakete", admin_preset_name_ph: "Paketname",
+                admin_preset_slugs_ph: "Mod-Slugs (z.B. chunky, lithium, spark)", create_global_preset_btn: "Globales Paket Erstellen", reg_users_title: "Registrierte Benutzer",
+                all_instances_title: "Alle Plattform-Instanzen", mojang_disclaimer: "KEIN OFFIZIELLES MINECRAFT-PRODUKT."
+            },
+            fr: {
+                signin_prompt: "Connectez-vous pour accéder à vos instances", username: "Nom d'utilisateur", password: "Mot de passe", login: "Connexion", register: "S'inscrire",
+                instances: "Instances", account: "Compte", admin_panel: "Panneau Admin", active_context: "Contexte Actif", dashboard: "Tableau de bord",
+                console: "Console", files: "Fichiers", settings: "Options", addons: "Extensions", logout: "Déconnexion", overview: "Aperçu", theme: "Thème",
+                refresh_list: "Actualiser la liste", create_instance: "Créer une Instance", display_name: "Nom d'affichage", display_name_placeholder: "Mon Serveur Survie",
+                software_loader: "Type de Serveur", mc_version: "Version Minecraft (Officielle Mojang)", agree_eula: "J'accepte l'EULA de Minecraft",
+                create_btn: "Créer l'Instance", resource_usage: "Utilisation des Ressources", memory: "Mémoire:", cpu: "Charge CPU:", instance_info: "Information Instance",
+                start: "▶ Démarrer le Serveur", stop: "⏹ Arrêter le Serveur", danger_zone: "⚠️ Zone de Danger", danger_zone_desc: "Supprimez définitivement cette instance et tous ses fichiers.",
+                delete_instance_btn: "🗑️ Supprimer cette instance", cmd_placeholder: "Tapez une commande et appuyez sur Entrée...", drop_zone: "📥 Glissez-déposez des fichiers ici pour les envoyer",
+                new_folder: "📁 Nouveau Dossier", file_edit_placeholder: "Sélectionnez un fichier texte à modifier...", save: "Enregistrer", download: "⬇️ Télécharger", delete: "Supprimer",
+                online_mode: "Mode En Ligne", online_locked_notice: "🔒 Verrouillé à 'true' par l'Administrateur", view_distance: "Distance d'Affichage (Chunks)", sim_distance: "Distance de Simulation (Chunks)",
+                save_settings: "Sauvegarder", addons_subtitle: "Installez des mods ou créez des packs en 1 clic.", start_builder: "🛠️ Créer un Pack de Mods",
+                check_updates: "🔄 Vérifier les Mises à Jour", save_preset: "💾 Enregistrer le Pack", cancel: "Annuler", preset_section: "⚡ Packs d'Installation 1-Clic", search_addons_section: "🔍 Rechercher des Mods Serveur",
+                search_addons_placeholder: "Rechercher des mods ou plugins (ex. Lithium, Chunky, Geyser)...", search: "Rechercher", resource_quotas: "📊 Quotas de Ressources",
+                instance_quota: "Quota d'Instances:", disk_usage: "Utilisation Disque:", group_tier: "Niveau de Groupe:", change_password: "Changer le mot de passe", new_password: "Nouveau mot de passe",
+                min_6_chars: "Au moins 6 caractères", update_password: "Mettre à jour le mot de passe", sec_access_title: "🛡️ Sécurité et Contrôle d'Accès",
+                sec_access_desc: "Gérez les règles d'inscription et les paramètres d'authentification.", allow_reg_label: "Autoriser l'Inscription Publique (Décocher pour bloquer les nouveaux comptes)",
+                force_online_label: "Forcer le Mode En Ligne (Empêche la désactivation de l'authentification Mojang)", admin_max_vd: "Distance d'Affichage Max (Chunks)",
+                admin_max_sd: "Distance de Simulation Max (Chunks)", save_sec_btn: "Enregistrer la Sécurité", quota_mgmt_title: "⚙️ Gestion des Quotas & Groupes",
+                quota_mgmt_desc: "Configurez les limites de ressources par groupe d'utilisateurs.", max_instances_label: "Max Instances par Utilisateur", max_ram_label: "Max RAM par Instance (MB)",
+                max_disk_label: "Limite de Stockage (MB)", max_cpu_label: "Limite CPU (%)", save_quota_btn: "Enregistrer les Quotas",
+                hub_desc: "Permet à plusieurs serveurs Minecraft de partager une seule IP/Port et redirige les joueurs automatiquement.",
+                hub_mode_label: "Stratégie de Routage", hub_custom_domain_label: "Domaine Racine Personnalisé", start_hub_btn: "🚀 Démarrer le Multiplexeur", stop_hub_btn: "⏹ Arrêter le Hub", save_hub_btn: "💾 Sauvegarder les Options",
+                global_presets_title: "🛡️ Packs de Mods Globaux", admin_preset_name_ph: "Nom du Pack",
+                admin_preset_slugs_ph: "Identifiants de mods (ex. chunky, lithium, spark)", create_global_preset_btn: "Créer le Pack Global", reg_users_title: "Utilisateurs Inscrits",
+                all_instances_title: "Toutes les Instances", mojang_disclaimer: "PAS UN PRODUIT OFFICIEL MINECRAFT."
+            }
+        };
+
+        // FULL DOM TRANSLATOR
+        const i18n = {
+            lang: getCookie('anvil_lang') || 'en',
+            setLanguage(lang) {
+                this.lang = lang;
+                setCookie('anvil_lang', lang);
+                const sel = document.getElementById('lang-select');
+                if (sel) sel.value = lang;
+                this.translateDOM();
+            },
+            translateDOM() {
+                const dict = translations[this.lang] || translations['en'];
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (dict[key]) el.textContent = dict[key];
+                });
+                document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                    const key = el.getAttribute('data-i18n-placeholder');
+                    if (dict[key]) el.placeholder = dict[key];
+                });
+            },
+            t(key) {
+                return (translations[this.lang] && translations[this.lang][key]) || (translations['en'][key]) || key;
+            }
+        };
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+
+        document.addEventListener('click', (e) => {
+            const link = e.target.closest('a');
+            if (link && link.origin === location.origin) {
+                e.preventDefault();
+                const path = link.getAttribute('href');
+                history.pushState(null, '', path);
+                resolveCurrentPage();
+            }
+        });
+        window.addEventListener('popstate', resolveCurrentPage);
+
+        const dropZone = document.getElementById('file-drop-zone');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent)'; });
+            dropZone.addEventListener('dragleave', () => dropZone.style.borderColor = 'var(--border-color)');
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'var(--border-color)';
+                if (e.dataTransfer.files.length) API.uploadFiles(e.dataTransfer.files);
+            });
+        }
+
+        function resolveCurrentPage() {
+            const path = location.pathname;
+            const params = new URLSearchParams(location.search);
+            if (params.get('id') || params.get('name')) state.activeServerId = params.get('id') || params.get('name');
+
+            document.querySelectorAll('.page-view').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active'));
+
+            const secSidebar = document.getElementById('sidebar-secondary');
+            if (state.activeServerId) {
+                secSidebar.classList.remove('collapsed');
+                const activeSrv = state.servers.find(s => s.id === state.activeServerId);
+                document.getElementById('sec-server-name').textContent = activeSrv ? (activeSrv.display_name || activeSrv.name) : state.activeServerId;
+            } else {
+                secSidebar.classList.add('collapsed');
+            }
+
+            if (path.startsWith('/server/dashboard')) {
+                document.getElementById('page-dashboard').classList.add('active');
+                document.getElementById('nav-dashboard').classList.add('active');
+                closeConsoleStream();
+                startDashboardMetrics();
+            } else if (path.startsWith('/server/console')) {
+                document.getElementById('page-console').classList.add('active');
+                document.getElementById('nav-console').classList.add('active');
+                stopDashboardMetrics();
+                connectConsoleStream(state.activeServerId);
+            } else {
+                stopDashboardMetrics();
+                closeConsoleStream();
+
+                if (path.startsWith('/server/files')) {
+                    document.getElementById('page-files').classList.add('active');
+                    document.getElementById('nav-files').classList.add('active');
+                    API.listFiles('');
+                } else if (path.startsWith('/server/config')) {
+                    document.getElementById('page-config').classList.add('active');
+                    document.getElementById('nav-config').classList.add('active');
+                    API.loadConfig();
+                } else if (path.startsWith('/server/addons')) {
+                    document.getElementById('page-addons').classList.add('active');
+                    document.getElementById('nav-addons').classList.add('active');
+                    API.loadPresets();
+                } else if (path.startsWith('/account')) {
+                    document.getElementById('page-account').classList.add('active');
+                    document.getElementById('nav-account').classList.add('active');
+                    API.loadAccountQuota();
+                } else if (path.startsWith('/admin')) {
+                    document.getElementById('page-admin').classList.add('active');
+                    document.getElementById('nav-admin').classList.add('active');
+                    API.loadAdminPanel();
+                } else {
+                    document.getElementById('page-servers').classList.add('active');
+                    document.getElementById('nav-servers').classList.add('active');
+                }
+            }
+
+            updateNavigationHrefs();
+            i18n.translateDOM();
+        }
+
+        function updateNavigationHrefs() {
+            const srv = state.activeServerId ? `?id=${state.activeServerId}` : '';
+            document.getElementById('nav-dashboard').href = `/server/dashboard${srv}`;
+            document.getElementById('nav-console').href = `/server/console${srv}`;
+            document.getElementById('nav-files').href = `/server/files${srv}`;
+            document.getElementById('nav-config').href = `/server/config${srv}`;
+            document.getElementById('nav-addons').href = `/server/addons${srv}`;
+        }
+
+        function renderServerList() {
+            const container = document.getElementById('server-list-container');
+            container.innerHTML = '';
+            state.servers.forEach(srv => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.style.cursor = 'pointer';
+                card.onclick = () => API.selectServer(srv.id, '/server/dashboard');
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <strong>${srv.display_name || srv.name}</strong>
+                        <span class="status-badge ${srv.status}">${srv.status}</span>
+                    </div>
+                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.4rem;">${srv.loader} - ${srv.minecraftversion}</p>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateActiveServerUI() {
+            if (!state.activeServerId) return;
+            const srv = state.servers.find(s => s.id === state.activeServerId);
+            if (!srv) return;
+            document.getElementById('active-server-name').textContent = srv.display_name || srv.name;
+            document.getElementById('info-loader').textContent = srv.loader;
+            document.getElementById('info-version').textContent = srv.minecraftversion;
+            document.getElementById('metric-ram').textContent = srv.metrics ? srv.metrics.memory : '0 MB';
+            document.getElementById('metric-cpu').textContent = srv.metrics ? srv.metrics.cpu : '0%';
+        }
+
+        let consoleEventSource = null;
+        let dashboardMetricsTimer = null;
+
+        function connectConsoleStream(serverId) {
+            closeConsoleStream();
+            if (!serverId) return;
+
+            const box = document.getElementById('console-logs');
+            box.innerHTML = '<div style="color:var(--text-muted); padding:0.5rem;">Connecting to live console stream...</div>';
+
+            consoleEventSource = new EventSource(`/api/servers/console/stream?id=${encodeURIComponent(serverId)}`);
+
+            consoleEventSource.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    if (data.type === 'init') {
+                        box.innerHTML = '';
+                        (data.logs || []).forEach(logText => {
+                            const div = document.createElement('div');
+                            div.className = 'console-entry';
+                            div.textContent = logText;
+                            box.appendChild(div);
+                        });
+                        box.scrollTop = box.scrollHeight;
+                    } else if (data.type === 'line' && data.line) {
+                        const div = document.createElement('div');
+                        div.className = 'console-entry';
+                        div.textContent = data.line;
+                        box.appendChild(div);
+                        box.scrollTop = box.scrollHeight;
+                    }
+                } catch (err) {}
+            };
+        }
+
+        function closeConsoleStream() {
+            if (consoleEventSource) {
+                consoleEventSource.close();
+                consoleEventSource = null;
+            }
+        }
+
+        function startDashboardMetrics() {
+            stopDashboardMetrics();
+            API.loadServers();
+            dashboardMetricsTimer = setInterval(() => {
+                if (document.getElementById('page-dashboard').classList.contains('active') && !document.hidden) {
+                    API.loadServers();
+                } else {
+                    stopDashboardMetrics();
+                }
+            }, 3000);
+        }
+
+        function stopDashboardMetrics() {
+            if (dashboardMetricsTimer) {
+                clearInterval(dashboardMetricsTimer);
+                dashboardMetricsTimer = null;
+            }
+        }
+
+        const API = {
+            async checkRegistrationStatus() {
+                try {
+                    const res = await fetch('/api/auth/status').then(r => r.json());
+                    const regBtn = document.getElementById('btn-auth-register');
+                    if (regBtn) {
+                        if (res.allow_registration === false) {
+                            regBtn.disabled = true;
+                            regBtn.style.opacity = '0.5';
+                            regBtn.style.cursor = 'not-allowed';
+                            regBtn.title = "Registration is closed by administrator.";
+                            regBtn.textContent = "Registration Closed";
+                        } else {
+                            regBtn.disabled = false;
+                            regBtn.style.opacity = '1';
+                            regBtn.style.cursor = 'pointer';
+                            regBtn.textContent = i18n.t('register');
+                        }
+                    }
+                } catch (err) {}
+            },
+
+            async checkAuth() {
+                await this.checkRegistrationStatus();
+                const res = await fetch('/api/auth/me').then(r => r.json());
+                if (res.status === 'success') {
+                    state.user = res.user;
+                    document.getElementById('auth-overlay').style.display = 'none';
+                    document.getElementById('user-display').textContent = `${res.user.username} (${res.user.role})`;
+                    if (res.user.role === 'admin') document.getElementById('nav-admin-link').style.display = 'block';
+                    await this.loadServers();
+                    await this.loadMinecraftVersions();
+                    resolveCurrentPage();
+                } else {
+                    document.getElementById('auth-overlay').style.display = 'flex';
+                }
+            },
+
+            selectServer(serverId, redirectPath = null) {
+                state.activeServerId = serverId;
+                updateNavigationHrefs();
+                updateActiveServerUI();
+                if (redirectPath) history.pushState(null, '', `${redirectPath}?id=${serverId}`);
+                else history.replaceState(null, '', `${location.pathname}?id=${serverId}`);
+                resolveCurrentPage();
+            },
+
+            async login() {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: document.getElementById('auth-username').value, password: document.getElementById('auth-password').value })
+                }).then(r => r.json());
+                if (res.status === 'success') this.checkAuth();
+                else alert(res.error);
+            },
+
+            async register() {
+                const res = await fetch('/api/auth/register', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: document.getElementById('auth-username').value, password: document.getElementById('auth-password').value })
+                }).then(r => r.json());
+                if (res.status === 'success') alert("Registered! You can now log in.");
+                else alert(res.error);
+            },
+
+            async logout() {
+                await fetch('/api/auth/logout', { method: 'POST' });
+                state.user = null;
+                document.getElementById('auth-overlay').style.display = 'flex';
+            },
+
+            async changePassword() {
+                const newPassword = document.getElementById('acc-new-pwd').value;
+                const res = await fetch('/api/auth/change_password', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ new_password: newPassword })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+            },
+
+            async loadServers() {
+                const res = await fetch('/api/servers').then(r => r.json());
+                if (res.servers) {
+                    state.servers = res.servers;
+                    renderServerList();
+                    updateActiveServerUI();
+                }
+            },
+
+            async loadMinecraftVersions() {
+                const versionSelect = document.getElementById('create-version');
+                try {
+                    let res = await fetch('/api/mc-versions').then(r => r.json());
+                    if (res.versions && res.versions.length > 0) {
+                        versionSelect.innerHTML = '';
+                        res.versions.forEach(v => {
+                            const opt = document.createElement('option');
+                            opt.value = v.id;
+                            opt.textContent = `${v.id} ${v.id === res.latest ? '(Latest Release)' : ''}`;
+                            if (v.id === res.latest) opt.selected = true;
+                            versionSelect.appendChild(opt);
+                        });
+                    }
+                } catch (err) {
+                    versionSelect.innerHTML = '<option value="1.20.4" selected>1.20.4 (Fallback)</option>';
+                }
+            },
+
+            async startServer() {
+                if (!state.activeServerId) return;
+                const res = await fetch('/api/servers/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: state.activeServerId }) }).then(r => r.json());
+                if (res.status !== 'success') alert(res.error);
+                setTimeout(() => this.loadServers(), 1000);
+            },
+
+            async stopServer() {
+                if (!state.activeServerId) return;
+                await fetch('/api/servers/stop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: state.activeServerId }) });
+                setTimeout(() => this.loadServers(), 1000);
+            },
+
+            async sendCommand() {
+                const input = document.getElementById('console-input');
+                if (!input.value.trim() || !state.activeServerId) return;
+                await fetch('/api/servers/console', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: state.activeServerId, command: input.value }) });
+                input.value = '';
+            },
+
+            async createServer() {
+                const name = document.getElementById('create-name').value;
+                const loader = document.getElementById('create-loader').value;
+                const minecraftversion = document.getElementById('create-version').value;
+                const eulaAccepted = document.getElementById('create-eula').checked;
+                if (!eulaAccepted) return alert("You must agree to the EULA.");
+
+                const res = await fetch('/api/servers/create', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, loader, minecraftversion, eula: true })
+                }).then(r => r.json());
+
+                if (res.status === 'success') {
+                    await this.loadServers();
+                    resolveCurrentPage();
+                } else alert(res.error);
+            },
+
+            async deleteCurrentServer() {
+                if (!state.activeServerId) return;
+                const activeSrv = state.servers.find(s => s.id === state.activeServerId);
+                const srvName = activeSrv ? (activeSrv.display_name || activeSrv.name) : state.activeServerId;
+
+                if (!confirm(`Are you sure you want to PERMANENTLY DELETE "${srvName}" and all its files?`)) return;
+
+                const res = await fetch('/api/servers/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+                if (res.status === 'success') {
+                    state.activeServerId = null;
+                    document.getElementById('sidebar-secondary').classList.add('collapsed');
+                    await this.loadServers();
+                    history.pushState(null, '', '/servers');
+                    resolveCurrentPage();
+                }
+            },
+
+            async adminDeleteServer(serverId, displayName) {
+                if (!confirm(`ADMIN ACTION: Force delete server "${displayName}" (${serverId})?`)) return;
+
+                const res = await fetch('/api/servers/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: serverId })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+                if (res.status === 'success') {
+                    if (state.activeServerId === serverId) {
+                        state.activeServerId = null;
+                        document.getElementById('sidebar-secondary').classList.add('collapsed');
+                    }
+                    this.loadAdminPanel();
+                    this.loadServers();
+                }
+            },
+
+            async listFiles(relPath = '') {
+                if (!state.activeServerId) return;
+                state.activeFilePath = relPath;
+                document.getElementById('current-file-path').textContent = `Path: /${relPath}`;
+                const res = await fetch(`/api/servers/files?id=${state.activeServerId}&path=${encodeURIComponent(relPath)}`).then(r => r.json());
+                const container = document.getElementById('file-tree-container');
+                container.innerHTML = '';
+
+                if (res.type === 'dir') {
+                    if (relPath) {
+                        const parentPath = relPath.includes('/') ? relPath.substring(0, relPath.lastIndexOf('/')) : '';
+                        const upDiv = document.createElement('div');
+                        upDiv.style.cssText = "padding:0.5rem; border-bottom:1px solid var(--border-color); cursor:pointer; font-weight:bold; color:var(--accent);";
+                        upDiv.innerHTML = "⬆️ .. (Parent Directory)";
+                        upDiv.onclick = () => this.listFiles(parentPath);
+                        container.appendChild(upDiv);
+                    }
+
+                    res.items.forEach(item => {
+                        const div = document.createElement('div');
+                        div.style.cssText = "padding:0.5rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; cursor:pointer;";
+                        div.innerHTML = `<span>${item.is_dir ? '📁' : '📄'} ${item.name}</span> <span>${item.is_dir ? 'dir' : item.size + ' B'}</span>`;
+                        div.onclick = () => {
+                            const target = relPath ? `${relPath}/${item.name}` : item.name;
+                            this.listFiles(target);
+                        };
+                        container.appendChild(div);
+                    });
+                } else if (res.type === 'file') {
+                    document.getElementById('file-content-editor').value = res.content;
+                }
+            },
+
+            async uploadFiles(files) {
+                if (!state.activeServerId) return;
+                for (let file of files) {
+                    await fetch(`/api/servers/files/upload?id=${state.activeServerId}&path=${encodeURIComponent(state.activeFilePath)}&filename=${encodeURIComponent(file.name)}`, {
+                        method: 'POST', body: file
+                    });
+                }
+                alert("Upload completed.");
+                this.listFiles(state.activeFilePath);
+            },
+
+            downloadCurrentFile() {
+                if (!state.activeServerId || !state.activeFilePath) return;
+                window.open(`/api/servers/files/download?id=${state.activeServerId}&path=${encodeURIComponent(state.activeFilePath)}`, '_blank');
+            },
+
+            async saveFile() {
+                if (!state.activeServerId || !state.activeFilePath) return;
+                const content = document.getElementById('file-content-editor').value;
+                const res = await fetch('/api/servers/files/save', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, path: state.activeFilePath, content })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+            },
+
+            async deleteFile() {
+                if (!state.activeServerId || !state.activeFilePath) return;
+                if (!confirm(`Delete ${state.activeFilePath}?`)) return;
+                const res = await fetch('/api/servers/files/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, path: state.activeFilePath })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+                this.listFiles('');
+            },
+
+            async createFolderPrompt() {
+                const folderName = prompt("Enter folder name:");
+                if (!folderName) return;
+                const target = state.activeFilePath ? `${state.activeFilePath}/${folderName}` : folderName;
+                await fetch('/api/servers/files/create_folder', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, path: target })
+                });
+                this.listFiles(state.activeFilePath);
+            },
+
+            togglePresetBuilder() {
+                if (state.builder.active) {
+                    this.cancelPresetBuilder();
+                    return;
+                }
+                const name = prompt("Enter a name for your new Preset (e.g. My Optimization Pack):");
+                if (!name) return;
+
+                state.builder = { active: true, name: name.trim(), loader: 'all', mods: [] };
+                document.getElementById('builder-toolbar').style.display = 'flex';
+                document.getElementById('builder-preset-title').textContent = `"${state.builder.name}"`;
+                document.getElementById('builder-count').textContent = '(0 mods selected)';
+                document.getElementById('btn-toggle-builder').textContent = '❌ Exit Builder';
+                this.searchAddons();
+            },
+
+            cancelPresetBuilder() {
+                state.builder = { active: false, name: '', loader: 'all', mods: [] };
+                document.getElementById('builder-toolbar').style.display = 'none';
+                document.getElementById('btn-toggle-builder').textContent = '🛠️ Start Preset Builder';
+                this.searchAddons();
+            },
+
+            toggleModInBuilder(slug) {
+                const idx = state.builder.mods.indexOf(slug);
+                if (idx > -1) state.builder.mods.splice(idx, 1);
+                else state.builder.mods.push(slug);
+                document.getElementById('builder-count').textContent = `(${state.builder.mods.length} mod(s) selected: ${state.builder.mods.join(', ')})`;
+                this.searchAddons();
+            },
+
+            async savePresetFromBuilder() {
+                if (state.builder.mods.length === 0) return alert("Select at least one mod before saving.");
+                const res = await fetch('/api/presets/create', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: state.builder.name,
+                        description: `Custom bundle with ${state.builder.mods.length} addons.`,
+                        loader: state.builder.loader,
+                        project_ids: state.builder.mods
+                    })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+                if (res.status === 'success') {
+                    this.cancelPresetBuilder();
+                    this.loadPresets();
+                }
+            },
+
+            async searchAddons() {
+                const container = document.getElementById('addon-results-container');
+                if (!state.activeServerId) return;
+                const srv = state.servers.find(s => s.id === state.activeServerId);
+                const q = document.getElementById('addon-search-input').value;
+                const installedRes = await fetch(`/api/addons/installed?id=${state.activeServerId}`).then(r => r.json());
+                const installedMap = installedRes.installed || {};
+
+                const res = await fetch(`/api/addons/search?q=${encodeURIComponent(q)}&loader=${srv ? srv.loader : 'paper'}&version=${srv ? srv.minecraftversion : ''}`).then(r => r.json());
+
+                container.innerHTML = '';
+                if (res.hits && res.hits.length > 0) {
+                    res.hits.forEach(hit => {
+                        const slug = hit.slug || hit.project_id;
+                        const isInstalled = !!installedMap[hit.project_id] || !!installedMap[slug];
+                        const modrinthUrl = `https://modrinth.com/${hit.project_type || 'mod'}/${slug}`;
+
+                        let envBadge = '<span class="status-badge online">🖥️ SERVER-ONLY</span>';
+                        if (hit.env_type === 'SERVER_AND_CLIENT') {
+                            envBadge = '<span class="status-badge" style="background:rgba(59,130,246,0.15); color:var(--accent);">🔄 SERVER & CLIENT</span>';
+                        }
+
+                        let actionButton = '';
+                        if (state.builder.active) {
+                            const isAdded = state.builder.mods.includes(slug);
+                            actionButton = isAdded
+                                ? `<button type="button" class="action-btn" style="background:var(--status-online); padding:0.35rem 0.8rem; font-size:0.8rem;" onclick="API.toggleModInBuilder('${slug}')">✓ Added to Preset</button>`
+                                : `<button type="button" class="action-btn secondary" style="padding:0.35rem 0.8rem; font-size:0.8rem;" onclick="API.toggleModInBuilder('${slug}')">➕ Add to Preset</button>`;
+                        } else {
+                            actionButton = isInstalled
+                                ? `<button type="button" class="action-btn danger" style="padding:0.35rem 0.8rem; font-size:0.8rem;" onclick="API.uninstallAddon('${hit.project_id}')">🗑️ Uninstall</button>`
+                                : `<button type="button" class="action-btn" style="padding:0.35rem 0.8rem; font-size:0.8rem;" onclick="API.installAddon('${hit.project_id}')">⚡ Install</button>`;
+                        }
+
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:1rem;">
+                                <a href="${modrinthUrl}" target="_blank" rel="noopener noreferrer">
+                                    <img src="${hit.icon_url || 'https://modrinth.com/favicon.ico'}" style="width:44px; height:44px; border-radius:8px; object-fit:cover; cursor:pointer;">
+                                </a>
+                                <div style="flex:1;">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <a href="${modrinthUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--text-primary); text-decoration:none; font-size:1.05rem; font-weight:700;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text-primary)'">
+                                            ${hit.title} ↗
+                                        </a>
+                                        ${envBadge}
+                                    </div>
+                                    <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.2rem;">${hit.description}</p>
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1rem;">
+                                <span style="font-size:0.75rem; color:var(--text-muted);">Downloads: ${hit.downloads.toLocaleString()}</span>
+                                ${actionButton}
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = '<p style="color:var(--text-muted);">No matching server addons found.</p>';
+                }
+            },
+
+            async loadPresets() {
+                const srv = state.servers.find(s => s.id === state.activeServerId);
+                const loader = srv ? srv.loader : '';
+                const res = await fetch(`/api/presets?loader=${encodeURIComponent(loader)}`).then(r => r.json());
+                const container = document.getElementById('presets-container');
+                container.innerHTML = '';
+
+                if (res.presets && res.presets.length > 0) {
+                    res.presets.forEach(p => {
+                        const card = document.createElement('div');
+                        card.className = 'card';
+                        card.style.borderLeft = p.is_system ? '4px solid var(--accent)' : '4px solid var(--status-online)';
+                        card.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                <strong style="font-size:1.05rem;">${p.name}</strong>
+                                <span class="status-badge ${p.is_system ? 'online' : 'starting'}">${p.is_system ? 'Global Preset' : 'My Preset'}</span>
+                            </div>
+                            <p style="font-size:0.8rem; color:var(--text-muted); margin:0.5rem 0;">${p.description || 'Custom bundled pack.'}</p>
+                            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem;">
+                                Included: <code>${p.project_ids.join(', ')}</code>
+                            </div>
+                            <div style="display:flex; gap:0.5rem;">
+                                <button type="button" class="action-btn" style="flex:1; padding:0.4rem;" onclick="API.applyPreset('${p.id}')">⚡ 1-Click Install</button>
+                                ${p.is_owner ? `<button type="button" class="action-btn danger" style="padding:0.4rem 0.6rem;" onclick="API.deletePreset('${p.id}')">🗑️</button>` : ''}
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                }
+            },
+
+            async installAddon(projectId) {
+                if (!state.activeServerId) return;
+                const res = await fetch('/api/addons/install', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, project_id: projectId })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+                this.searchAddons();
+            },
+
+            async uninstallAddon(projectId) {
+                if (!state.activeServerId) return;
+                const res = await fetch('/api/addons/uninstall', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, project_id: projectId })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+                this.searchAddons();
+            },
+
+            async checkForUpdates() {
+                if (!state.activeServerId) return;
+                const banner = document.getElementById('addon-updates-banner');
+                banner.style.display = 'block';
+                banner.innerHTML = 'Scanning installed addons...';
+                const res = await fetch('/api/addons/check_updates', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId })
+                }).then(r => r.json());
+
+                if (res.updates && res.updates.length > 0) banner.innerHTML = `⚠️ ${res.updates.length} update(s) available!`;
+                else banner.innerHTML = '✅ All addons up to date!';
+            },
+
+            async applyPreset(presetId) {
+                if (!state.activeServerId) return alert("Select an active server instance first.");
+                const res = await fetch('/api/presets/apply', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, preset_id: presetId })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+            },
+
+            async deletePreset(presetId) {
+                if (!confirm("Are you sure you want to delete this preset?")) return;
+                const res = await fetch('/api/presets/delete', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ preset_id: presetId })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+                this.loadPresets();
+            },
+
+            async loadConfig() {
+                if (!state.activeServerId) return;
+                const res = await fetch(`/api/servers/config?id=${state.activeServerId}`).then(r => r.json());
+                if (res.properties) {
+                    const p = res.properties;
+                    const onlineSelect = document.getElementById('cfg-online-mode');
+                    const lockMsg = document.getElementById('online-mode-lock-msg');
+
+                    if (res.online_mode_locked) {
+                        onlineSelect.value = 'true';
+                        onlineSelect.disabled = true;
+                        if (lockMsg) lockMsg.style.display = 'inline';
+                    } else {
+                        onlineSelect.disabled = false;
+                        if (lockMsg) lockMsg.style.display = 'none';
+                        if (p['online-mode']) onlineSelect.value = p['online-mode'];
+                    }
+
+                    if (p['view-distance']) document.getElementById('cfg-view-distance').value = p['view-distance'];
+                    if (p['simulation-distance']) document.getElementById('cfg-simulation-distance').value = p['simulation-distance'];
+
+                    if (res.max_view_distance) {
+                        const vdInput = document.getElementById('cfg-view-distance');
+                        vdInput.max = res.max_view_distance;
+                        document.getElementById('vd-max-label').textContent = `(Max limit: ${res.max_view_distance})`;
+                    }
+                    if (res.max_simulation_distance) {
+                        const sdInput = document.getElementById('cfg-simulation-distance');
+                        sdInput.max = res.max_simulation_distance;
+                        document.getElementById('sd-max-label').textContent = `(Max limit: ${res.max_simulation_distance})`;
+                    }
+                }
+            },
+
+            async saveConfig() {
+                if (!state.activeServerId) return;
+                const props = {
+                    'online-mode': document.getElementById('cfg-online-mode').value,
+                    'view-distance': document.getElementById('cfg-view-distance').value,
+                    'simulation-distance': document.getElementById('cfg-simulation-distance').value
+                };
+                const res = await fetch('/api/servers/config', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: state.activeServerId, properties: props })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+            },
+
+            async loadAccountQuota() {
+                const res = await fetch('/api/account/quota').then(r => r.json());
+                if (res.status === 'success') {
+                    document.getElementById('quota-instances-text').textContent = `${res.instances_used} / ${res.instances_max} Instances`;
+                    document.getElementById('quota-disk-text').textContent = `${res.disk_used_mb} MB / ${res.disk_max_mb} MB (${res.disk_pct}%)`;
+                    document.getElementById('quota-group-name').textContent = res.group_name;
+
+                    const bar = document.getElementById('quota-disk-bar');
+                    bar.style.width = `${res.disk_pct}%`;
+                    bar.style.background = res.disk_pct > 90 ? 'var(--status-offline)' : (res.disk_pct > 70 ? 'var(--status-starting)' : 'var(--accent)');
+                }
+            },
+
+            toggleHubDomainInput() {
+                const mode = document.getElementById('hub-mode-select').value;
+                document.getElementById('hub-domain-group').style.display = mode === 'vhost' ? 'block' : 'none';
+            },
+
+            async loadHubStatus() {
+                const res = await fetch('/api/admin/hub').then(r => r.json());
+                const badge = document.getElementById('hub-badge');
+                const startBtn = document.getElementById('btn-start-hub');
+                const stopBtn = document.getElementById('btn-stop-hub');
+
+                if (res.hub_status === 'running') {
+                    badge.className = 'status-badge online';
+                    badge.textContent = '🟢 Running (0.0.0.0:25565)';
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-flex';
+                } else {
+                    badge.className = 'status-badge offline';
+                    badge.textContent = '🔴 Offline';
+                    startBtn.style.display = 'inline-flex';
+                    stopBtn.style.display = 'none';
+                }
+
+                if (res.mode) document.getElementById('hub-mode-select').value = res.mode;
+                if (res.custom_domain) document.getElementById('hub-custom-domain').value = res.custom_domain;
+                this.toggleHubDomainInput();
+            },
+
+            async startHub() {
+                const res = await fetch('/api/admin/hub/start', { method: 'POST' }).then(r => r.json());
+                alert(res.message || res.error);
+                this.loadHubStatus();
+            },
+
+            async stopHub() {
+                const res = await fetch('/api/admin/hub/stop', { method: 'POST' }).then(r => r.json());
+                alert(res.message || res.error);
+                this.loadHubStatus();
+            },
+
+            async saveHubSettings() {
+                const mode = document.getElementById('hub-mode-select').value;
+                const domain = document.getElementById('hub-custom-domain').value.trim();
+
+                const res = await fetch('/api/admin/hub/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode, custom_domain: domain })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+            },
+
+            async loadAdminPanel() {
+                this.loadHubStatus();
+                
+                const res = await fetch('/api/admin/users').then(r => r.json());
+                const userContainer = document.getElementById('admin-user-list');
+                userContainer.innerHTML = '';
+                if (res.users) {
+                    res.users.forEach(u => {
+                        const div = document.createElement('div');
+                        div.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:0.6rem; border-bottom:1px solid var(--border-color);";
+                        div.innerHTML = `
+                            <div><strong>${u.username}</strong> (${u.role}) - Group: <code>${u.group_id}</code> | ${u.is_suspended ? '🔴 Suspended' : '🟢 Active'}</div>
+                            <button type="button" class="action-btn ${u.is_suspended ? 'secondary' : 'danger'}" style="padding:0.25rem 0.5rem; font-size:0.75rem;" onclick="API.toggleSuspend('${u.id}', ${!u.is_suspended})">
+                                ${u.is_suspended ? 'Unsuspend' : 'Suspend'}
+                            </button>
+                        `;
+                        userContainer.appendChild(div);
+                    });
+                }
+
+                const srvRes = await fetch('/api/admin/servers').then(r => r.json());
+                const srvContainer = document.getElementById('admin-server-list');
+                srvContainer.innerHTML = '';
+                if (srvRes.servers) {
+                    srvRes.servers.forEach(s => {
+                        const div = document.createElement('div');
+                        div.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid var(--border-color);";
+                        div.innerHTML = `
+                            <div>
+                                <strong>${s.display_name || s.name}</strong> 
+                                <span style="font-size:0.8rem; color:var(--text-muted); margin-left:0.5rem;">Owner: <code>${s.owner_username || 'Unknown'}</code> | ${s.loader} ${s.minecraftversion}</span>
+                            </div>
+                            <button type="button" class="action-btn danger" style="padding:0.3rem 0.6rem; font-size:0.75rem;" onclick="API.adminDeleteServer('${s.id}', '${s.display_name || s.name}')">
+                                🗑️ Force Delete
+                            </button>
+                        `;
+                        srvContainer.appendChild(div);
+                    });
+                }
+
+                const groupRes = await fetch('/api/admin/groups').then(r => r.json());
+                if (groupRes.groups && groupRes.groups.length > 0) {
+                    const def = groupRes.groups[0];
+                    document.getElementById('admin-quota-instances').value = def.max_instances;
+                    document.getElementById('admin-quota-ram').value = def.max_ram_mb;
+                    document.getElementById('admin-quota-disk').value = def.max_disk_mb;
+                    document.getElementById('admin-quota-cpu').value = def.max_cpu_pct;
+                }
+
+                const presetRes = await fetch('/api/presets').then(r => r.json());
+                const presetContainer = document.getElementById('admin-presets-list');
+                presetContainer.innerHTML = '';
+                if (presetRes.presets) {
+                    presetRes.presets.filter(p => p.is_system).forEach(p => {
+                        const div = document.createElement('div');
+                        div.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border-bottom:1px solid var(--border-color); font-size:0.85rem;";
+                        div.innerHTML = `
+                            <div><strong>${p.name}</strong> (${p.loader}) - <code>${p.project_ids.join(', ')}</code></div>
+                            <button type="button" class="action-btn danger" style="padding:0.2rem 0.5rem; font-size:0.75rem;" onclick="API.deletePreset('${p.id}')">Delete</button>
+                        `;
+                        presetContainer.appendChild(div);
+                    });
+                }
+
+                const settingsRes = await fetch('/api/admin/settings').then(r => r.json());
+                if (settingsRes.settings) {
+                    const s = settingsRes.settings;
+                    if (s.max_view_distance) document.getElementById('admin-max-view-dist').value = s.max_view_distance;
+                    if (s.max_simulation_distance) document.getElementById('admin-max-sim-dist').value = s.max_simulation_distance;
+                    if (s.lock_online_mode) document.getElementById('admin-lock-online').checked = (s.lock_online_mode === 'true');
+                    if (s.allow_registration) document.getElementById('admin-allow-reg').checked = (s.allow_registration !== 'false');
+                }
+            },
+
+            async adminSaveGroupQuota() {
+                const maxInstances = document.getElementById('admin-quota-instances').value;
+                const maxRam = document.getElementById('admin-quota-ram').value;
+                const maxDisk = document.getElementById('admin-quota-disk').value;
+                const maxCpu = document.getElementById('admin-quota-cpu').value;
+
+                const res = await fetch('/api/admin/groups/save', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: 'default', name: 'Default Users',
+                        max_instances: maxInstances, max_ram_mb: maxRam,
+                        max_disk_mb: maxDisk, max_cpu_pct: maxCpu
+                    })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+            },
+
+            async adminCreateGlobalPreset() {
+                const name = document.getElementById('admin-preset-name').value.trim();
+                const slugsText = document.getElementById('admin-preset-slugs').value.trim();
+                const loader = document.getElementById('admin-preset-loader').value;
+
+                if (!name || !slugsText) return alert("Please provide Preset Name and Mod Slugs.");
+                const project_ids = slugsText.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
+
+                const res = await fetch('/api/presets/create', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, description: 'Global administrator preset.', loader, project_ids, is_global: true })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+                if (res.status === 'success') {
+                    document.getElementById('admin-preset-name').value = '';
+                    document.getElementById('admin-preset-slugs').value = '';
+                    this.loadAdminPanel();
+                }
+            },
+
+            async adminCreateUser() {
+                const username = document.getElementById('admin-new-user').value;
+                const password = document.getElementById('admin-new-pass').value;
+                const role = document.getElementById('admin-new-role').value;
+                const res = await fetch('/api/admin/users/create', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, role })
+                }).then(r => r.json());
+                alert(res.message || res.error);
+                this.loadAdminPanel();
+            },
+
+            async saveAdminSettings() {
+                const maxVd = document.getElementById('admin-max-view-dist').value;
+                const maxSd = document.getElementById('admin-max-sim-dist').value;
+                const lockOnline = document.getElementById('admin-lock-online').checked ? 'true' : 'false';
+                const allowReg = document.getElementById('admin-allow-reg').checked ? 'true' : 'false';
+
+                const res = await fetch('/api/admin/settings', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: {
+                            max_view_distance: maxVd,
+                            max_simulation_distance: maxSd,
+                            lock_online_mode: lockOnline,
+                            allow_registration: allowReg
+                        }
+                    })
+                }).then(r => r.json());
+
+                alert(res.message || res.error);
+                this.checkRegistrationStatus();
+            },
+
+            async toggleSuspend(userId, suspend) {
+                await fetch('/api/admin/users/suspend', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId, suspend })
+                });
+                this.loadAdminPanel();
+            }
+        };
+
+        // INITIALIZATION
+        i18n.setLanguage(state.lang);
+        API.loadMinecraftVersions();
+        API.checkAuth();
+    </script>
+</body>
+
+</html>
